@@ -1,0 +1,613 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en-GB">
+
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Red Gate Assessment Template</title>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/lib/meyer-reset.css" />
+    <link rel="stylesheet" href="css/general.css" />
+    <!--[if IE 6]><link rel="stylesheet" href="css/ie-6.css" /><![endif]-->
+    <!--[if IE]><link rel="stylesheet" href="css/ie-all.css" /><![endif]-->
+
+    <style type="text/css">
+      <!--
+        /* Page-specific CSS
+         * ================= */
+        
+        /* Lists */
+        ul.sub_list {
+            margin-left: 15px;
+            font-size: 0.7em;
+        }
+        ul.sub_list li {
+            line-height: 2.5em;
+            min-height: 2.5em;
+        }
+        
+        /* Buttons */
+        button {
+            border: none;
+            background-color: transparent;
+            background-image: none;
+            text-decoration: none;
+        }
+        button.next, button.checkout {
+            margin-top: 10px;
+            padding: 0 0 3px 28px;
+            font-weight: bold;
+            text-align: left;
+        }
+        button.next {
+            width: 75px;
+            height: 33px;
+            background-image: url('images/buttons/next.jpg');
+        }
+        button.checkout {
+            width: 145px;
+            height: 33px;
+            background-image: url('images/buttons/checkout.jpg');
+        }
+        h2.expander {cursor: pointer;}
+        
+        /* Profiler form styles */
+        #profiler_sections h2 {margin: 5px;}
+        #profiler_sections {
+            width: 680px;
+            border-left: 2px solid #333;
+            border-right: 2px solid #333;
+            border-bottom: 2px solid #333;
+        }
+        #profiler_sections h2 {
+            border-top: 2px solid #333;
+            border-bottom: 2px solid #333;
+            background-color: #ddd;
+            margin: 0;
+            padding: 5px;
+        }
+        #profiler_sections .body {padding: 10px;}
+        #profiler_sections table {width: 100%;}
+        
+        /* Basket */
+        #basket_summary {
+            width: 200px;
+            padding: 10px;
+            border: 2px solid #333;
+            background-color: #fff; /* This is so if it floats over the footer, it won't look transparent */
+            border-radius: 10px; /* official w3c implementation - hopefully this will be implemented by some browsers in the future */
+            -moz-border-radius: 10px; /* mozilla browsers */
+            -webkit-border-radius: 10px; /* safari and chrome browsers */
+        }
+        
+        /* Individual fixes */
+        input.quantity {width: 1.5em;}
+        #profiler_2_list.indent {padding-left: 25px;}
+        .basket_item, .basket_discount {display: none;}
+        /* Last two sections start off closed */
+        #expander_2 .expandee, #expander_3 .expandee {display: none;}
+      -->
+    </style>
+    <!--[if IE 6]>
+    <style type="text/css">
+        ul.sub_list li {height: 2.5em;}
+    </style>
+    <![endif]-->
+    <!--[if IE]>
+    <style type="text/css">
+    </style>
+    <![endif]-->
+    
+    <!-- JavaScript -->
+    <script type="text/javascript" src="js/lib/jquery-1.4.min.js"></script>
+    <script type="text/javascript" src="js/lib/jquery.currency.min.js"></script>
+    <script type="text/javascript" src="js/lib/jquery.form.min.js"></script>
+    <script type="text/javascript" src="js/lib/curvycorners.js"></script>
+    <script type="text/javascript" src="js/general.js"></script>
+    <script type="text/javascript">
+      <!--
+        /** Config */
+        var basketSetup = {
+            "basket_1_user": {
+                "unitCostElem": 'table#product_licenses tr#license_1 td.unit_cost .currency',
+                "quantityElem": 'table#product_licenses tr#license_1 td.quantity input.quantity'
+            },
+            "basket_5_user": {
+                "unitCostElem": 'table#product_licenses tr#license_5 td.unit_cost .currency',
+                "quantityElem": 'table#product_licenses tr#license_5 td.quantity input.quantity',
+                "discount": {
+                    "reportElem": '#basket_summary #basket_5_discount',
+                    "sourceElem": 'table#product_licenses tr#license_5 td.discount'
+                }   
+            },
+            "basket_10_user": {
+                "unitCostElem": 'table#product_licenses tr#license_10 td.unit_cost .currency',
+                "quantityElem": 'table#product_licenses tr#license_10 td.quantity input.quantity',
+                "discount": {
+                    "reportElem": '#basket_summary #basket_10_discount',
+                    "sourceElem": 'table#product_licenses tr#license_10 td.discount'
+                }
+            },
+            "basket_support": {
+                "costFormElem": 'form#ants_form input[name=support_upgrades]'
+            }
+        }
+        
+        var licenseData = {};
+        
+        /** Main actions */
+        jq(document).bind(
+            'ready',
+            function() {
+                /** Setup sticky basket */
+                // Set the basket to stick to the top of the page
+                fixVisible({
+                    element: jq('#basket_summary'),
+                    topOffset: 10
+                });
+                
+                /** Setup expanding form sections */
+                // Setup expanding div sections
+                setupExpanders({
+                    callback: switchImage
+                });
+                
+                /** Set expander images */
+                // Run replaceImage to put correct images in place
+                jq('.expandee').each(switchImage);
+                
+                /** Setup "Next" buttons */
+                var expander_targets = {
+                        'expander_1': 'expander_2',
+                        'expander_2': 'expander_3'
+                };
+                for(expander_id in expander_targets) {
+                    var expander = jq('#' + expander_id);
+                    var button = expander.find('button.next');
+                    button[0].target_id = expander_targets[expander_id];
+                    button.bind(
+                        'click',
+                        function(evt) {
+                            // Stop next button from submitting
+                            evt.preventDefault();
+                            
+                            // Get target
+                            var target = jq('#' + this.target_id);
+                            
+                            // Close this expandee and open target one
+                            if(jq(this).closest('.expander_parent').find('.expandee').is(':visible')) {
+                                jq(this).closest('.expander_parent').find('.expander').trigger('click');
+                            }
+                            if(target.find('.expandee').is(':hidden')) {
+                                target.find('.expander').trigger('click');
+                            }
+                            
+                            // Focus on first field
+                            target.find('.expandee').find('input, button, select, textarea').first().focus()
+                        }
+                    );
+                };
+                
+                /** retrieve license pricing data and pricing controls */
+                // Get data from JSON file
+                jq.ajax({
+                    url: "js/lib/prices.json.js",
+                    dataType: 'json',
+                    success: setupLicenseData
+                });
+                
+                /** Setup basket calculations when form changes */
+                jq('form#ants_form').bind('change',function() {
+                    jq(this).find('input.quantity').each(updateLicenseTotals);
+                });
+                jq('form#ants_form').bind('change',updateBasket);
+                
+                // Make form "change" on "keyup" on input boxes
+                // (by default it only happens on "blur")
+                jq('form#ants_form input').bind('keyup',function() {jq('form#ants_form').trigger('change');});
+            }
+        );
+        
+        /** Helper functions */
+        // Setup image changing on expandable elements
+        // callback for "setupExpanders()" in general.js
+        function switchImage() {
+            var expandImg = jq('<img src="images/buttons/expand.gif" class="expand_image" alt="expand" />');
+            var collapseImg = jq('<img src="images/buttons/collapse.gif" class="collapse_image" alt="collapse" />');
+            
+            // Get the container
+            var indicatorContainer = jq(this).closest('.expander_parent').find('.indicatorContainer');
+            if(indicatorContainer.length != 1) {return 0;}
+            
+            // Add the images
+            if(!indicatorContainer.is(':has(img)')) {
+                indicatorContainer.append(collapseImg);
+                indicatorContainer.append(expandImg);
+            }
+            
+            // Display correct image
+            indicatorContainer.children('.collapse_image').toggle(jq(this).is(':visible'));
+            indicatorContainer.children('.expand_image').toggle(!jq(this).is(':visible'));
+        }
+        
+        // When quantities are updated, trigger updateLicensePrices
+        // Ajax callback
+        function setupLicenseData(data) {
+            // Setup event handlers to update package prices
+            licenseData = data;
+            jq('input[name=package_choice]').bind(
+                'change',
+                function() {
+                    // Get product data
+                    var productCode = jq(this).val();
+                    updateLicensePrices(getProductDataByCode(productCode));
+                }
+            );
+            
+            // Setup event handlers to update license totals
+            jq('input.quantity').bind(
+                'keyup',
+                updateLicenseTotals
+            )
+        }
+        
+        // Get product data from its code
+        function getProductDataByCode(code) {
+            for(var i=0; i<licenseData.length; i++) {
+                if(licenseData[i].code == code) {
+                    return licenseData[i];
+                }
+            }
+            return false;
+        }
+        
+        // Update prices in table#product_licenses
+        function updateLicensePrices(product_data) {
+            // Product name
+            jq('table#product_licenses tr#license_header th.product_name').text(product_data.name);
+            // Unit costs
+            jq('table#product_licenses tr#license_1 td.unit_cost .currency').text(product_data.unitcost);
+            jq('table#product_licenses tr#license_5 td.unit_cost .currency').text(product_data.unitcost * 5);
+            jq('table#product_licenses tr#license_10 td.unit_cost .currency').text(product_data.unitcost * 10);
+            // Discounts
+            jq('table#product_licenses tr#license_5 td.discount').text(product_data.discount5pack + '%');
+            jq('table#product_licenses tr#license_10 td.discount').text(product_data.discount10pack + '%');
+            // User costs
+            jq('table#product_licenses tr#license_1 td.user_cost .currency').text(product_data.unitcost);
+            jq('table#product_licenses tr#license_5 td.user_cost .currency').text(
+                Math.round(product_data.unitcost * (1-product_data.discount5pack /100))
+            );
+            jq('table#product_licenses tr#license_10 td.user_cost .currency').text(
+                Math.round(product_data.unitcost * (1-product_data.discount10pack /100))
+            );
+            
+            jq('table#product_licenses .currency').currency();
+            
+            // Put quantities back to 0
+            jq('table#product_licenses input.quantity').val(0);
+            jq('form#ants_form').trigger('change');
+        }
+        
+        // update totals in table#product_licenses
+        // To be run in the context of an "input.quantity" element
+        function updateLicenseTotals() {
+            var quantity = jq(this).val();
+            var outputArea = jq(this).closest('tr').find('td.total .currency');
+            // Check for valid input
+            if(!quantity.match(/^\d+$/)) {
+                outputArea.text('???.??');
+                return false;
+            }
+            // Now calculate
+            var unitCost = jq(this).closest('tr').find('td.unit_cost .currency').text().replace(',','');
+            var discount = jq(this).closest('tr').find('td.discount').text().replace('%','');
+            var total = (unitCost * quantity) * (1 - discount/100);
+            outputArea.text(total);
+            outputArea.currency();
+        }
+        
+        
+        /** Basket update functions */
+        function updateBasket() {
+            updateBasketHeading();
+            jq('#basket_summary .basket_item').each(updateBasketItem);
+            updateBasketTotal();
+	    
+            // Update number of years of support
+            // This is hacked together. I would have done a more elegant solution but I ran out of time
+            jq('input[name=support_upgrades]').each(
+                function(index) {
+                    if(jq(this).is(':checked')) {
+                        var yearsText = "";
+                        switch(index) {
+                            case 0: yearsText = "0 Years Support"; break;
+                            case 1: yearsText = "1 Year Support"; break;
+                            case 2: yearsText = "2 Years Support"; break;
+                            case 3: yearsText = "3 Years Support"; break;
+                        }
+                        
+                        jq('#basket_summary #basket_support .years_text').text(yearsText);
+                        return false;
+                    }
+                }
+            )
+        }
+	
+        // Update the heading of the basket to reflect the chosen product
+        function updateBasketHeading() {
+            var productCode = jq('form#ants_form input[name=package_choice]').fieldValue();
+            var productData = getProductDataByCode(productCode);
+            if(productData.name) {jq('#basket_summary .product_name').text(productData.name);}
+            else {jq('#basket_summary .product_name').text('Nothing in basket')}
+        }
+	
+        // update an item in the basket
+        // To be run in the context of a "#basket_summary .basket_item" element
+        function updateBasketItem() {
+            var id = jq(this).attr('id');
+            var options = basketSetup[id];
+            var basketChanged = false;
+            
+            // Get data
+            var total = 0;
+            if(options.unitCostElem && options.quantityElem) {
+                var unitCost = jq(options.unitCostElem).text().replace(',',''); // get unit cost
+                var quantity = jq(options.quantityElem).val(); // get quantity
+                var total = quantity * unitCost; // Calculate total
+            } else if(options.unitCostElem) {
+                var total = Number(jq(options.unitCostElem).text().replace(',',''));
+            } else if(options.costFormElem) {
+                var total = Number(jq(options.costFormElem).fieldValue());
+            }
+            
+            // Check validity
+            if(total > 0) {
+                // Add
+                jq(this).find('.currencyNoDec').text(total);
+                jq(this).find('.currencyNoDec').currency({'c':0});
+                // Show the item if it's hidden
+                if(jq(this).is(':hidden')) {
+                    jq(this).show();
+                    basketChanged = true;
+                }
+                
+                // Apply discount
+                if(options.discount) {
+                    // Calculate discount
+                    var discount = jq(options.discount.sourceElem).text().replace('%','');
+                    var discountTotal = -((discount/100) * total);
+                    
+                    // Show discount
+                    if(discountTotal < 0) {
+                        // Update text
+                        jq(options.discount.reportElem).find('.currencyNoDec').text(discountTotal);
+                        jq(options.discount.reportElem).find('.currencyNoDec').currency({c:0});
+                        jq(options.discount.reportElem).find('.discount').text(discount);
+                        // Show discount element if hidden
+                        if(jq(options.discount.reportElem).is(':hidden')) {
+                            jq(options.discount.reportElem).show();
+                            basketChanged = true;
+                        }
+                    } else if(jq(options.discount.reportElem).is(':visible')) {
+                        // Hide the discount element if it's visible
+                        jq(options.discount.reportElem).hide();
+                        basketChanged = true;
+                    }
+                }
+            } else {
+                // Hide the item if it's visible
+                if(jq(this).is(':visible')) {
+                    jq(this).hide();
+                    basketChanged = true;
+                }
+                // Hide the discount item if it exists and is visible
+                if(options.discount && jq(options.discount.reportElem).is(':visible')) {
+                    jq(options.discount.reportElem).hide();
+                    basketChanged = true;
+                }
+            }
+            
+            // Redraw IE's curvy corners
+            if(basketChanged) {curvyCorners.redraw();}
+        }
+	
+        // Update the total of the basket
+        function updateBasketTotal() {
+            var totalOutputElem = jq('#basket_summary .basket_total .currencyNoDec');
+            var total = 0;
+            // Add item totals
+            jq('#basket_summary .basket_item .currencyNoDec, #basket_summary .basket_discount .currencyNoDec').each(
+                function() {
+                    if(jq(this).is(':visible')) {
+                        total += Number(jq(this).text().replace(',',''));
+                    }
+                }
+            )
+            totalOutputElem.text(total);
+            totalOutputElem.currency({c:0});
+        }
+      //-->
+    </script>
+
+  </head>
+
+  <body>
+
+    <div id="header"></div>
+
+    <div id="main">
+      <!-- ASSESSMENT CONTENT START -->      
+      <form id="ants_form" action="" method="post">
+        <h1>Purchase <strong>ANTS Performance Profiler</strong></h1>
+        
+        <!-- Basket -->
+        <div class="aside curvyRedraw" id="basket_summary">
+      
+          <div class="header">
+            <a href="help.html" class="aside" target="_blank"><img src="images/buttons/help.jpg" alt="help" /></a>
+            <h2>Basket Summary</h2>
+          </div>
+          
+          <div>
+            <p class="product_name">Nothing in basket</p>
+            <ul class="sub_list">
+              <li class="basket_item" id="basket_1_user">
+                <span class="aside">
+                  $<span class="currencyNoDec">0</span>
+                </span>
+                1 User License Pack
+              </li>
+              <li class="basket_item" id="basket_5_user">
+                <span class="aside">
+                  $<span class="currencyNoDec">0</span>
+                </span>
+                5 User License Pack
+              </li>
+              <li class="basket_discount" id="basket_5_discount">
+                <span class="aside">
+                  $<span class="currencyNoDec">0</span>
+                </span>
+                Discount (<span class="discount">0</span>%)
+              </li>
+              <li class="basket_item" id="basket_10_user">
+                <span class="aside">
+                  $<span class="currencyNoDec">0</span>
+                </span>
+                10 User License Pack
+              </li>
+              <li class="basket_discount" id="basket_10_discount">
+                <span class="aside">
+                  $<span class="currencyNoDec">0</span>
+                </span>
+                Discount (<span class="discount">0</span>%)
+              </li>
+              <li class="basket_item" id="basket_support">
+                <span class="aside">
+                  $<span class="currencyNoDec">920</span>
+                </span>
+                <span class="years_text">0 Years Support</span>
+              </li>
+            </ul>
+            <hr/>
+            <p class="basket_total">
+              <span class="aside">
+                $<span class="currencyNoDec">0</span>
+              </span>
+              Total
+            </p>
+            <button type="submit" name="action" value="checkout" class="checkout">Checkout Now</button>
+          </div>
+          
+        </div>
+        
+        <!-- main form sections -->
+        <ol id="profiler_sections">
+        
+          <li id="choose_product_bundle">
+            
+            <div class="expander_parent" id="expander_1">
+              <h2 class="profiler_section_heading expander">
+                <span class="aside indicatorContainer"></span>
+                1. Choose Product Bundle
+              </h2>
+              
+              <div class="body expandee">
+                <ul class="radio_list">
+                  <li>
+                    <p>
+                      <input type="radio" name="package_choice" value="PERF_PROFILER" id="ants_profiler_0" />
+                      <label for="ants_profiler_0">ANTS Performance Profiler</label>
+                    </p>
+                  </li>
+                  <li>
+                    <p>
+                      <input type="radio" name="package_choice" value="PERF_PROFILER_PRO" id="ants_profiler_1" />
+                      <label for="ants_profiler_1">ANTS Performance Profiler Professional</label>
+                    </p>
+                  </li>
+                  <li>
+                    <p>
+                      <input type="radio" name="package_choice" value="NET_DEV_BUNDLE" id="ants_profiler_2" />
+                      <label for="ants_profiler_2" id="profiler_2_label">.NET Developer Bundle:</label>
+                    </p>
+                    <ul class="sub_list indent" id="profiler_2_list">
+                      <li>ANTS Performance Profiler Professional</li>
+                      <li>ANTS Memory Profiler</li>
+                      <li>Exception Hunter</li>
+                    </ul>
+                  </li>
+                </ul>
+                <button type="submit" name="action" value="nextLicenses" class="next">Next</button>
+              </div>
+            </div>
+          </li>
+	  
+          <li id="how_many_licenses">
+          
+            <div class="expander_parent" id="expander_2">
+              <h2 class="profiler_section_heading expander">
+                <span class="aside indicatorContainer"></span>
+                2. How Many Licenses?
+              </h2>
+            
+              <div class="body expandee">
+                <table id="product_licenses">
+                  <tr id="license_header"><th class="text product_name">? Product</th>            <th class="number unit_cost">Unit Cost</th>                               <th class="number discount">Discount</th>   <th class="number user_cost">Cost per user</th>                         <th class="number quantity">Quantity</th>                                                                <th class="number total">Total</th></tr>
+                  <tr id="license_1">     <td class="text product_name">1 User License Pack</td>  <td class="number unit_cost">$<span class="currency">???.??</span></td>   <td class="number discount">0%</td>         <td class="number user_cost">$<span class="currency">???.??</span></td> <td class="number quantity"><input name="quantity_1" value="0" class="quantity" type="text" maxlength="2" /></td>  <td class="number total">$<span class="currency">???.??</span></td></tr>
+                  <tr id="license_5">     <td class="text product_name">5 User License Pack</td>  <td class="number unit_cost">$<span class="currency">???.??</span></td>   <td class="number discount">??%</td>         <td class="number user_cost">$<span class="currency">???.??</span></td> <td class="number quantity"><input name="quantity_5" value="0" class="quantity" type="text" maxlength="2" /></td>  <td class="number total">$<span class="currency">???.??</span></td></tr>
+                  <tr id="license_10">    <td class="text product_name">10 User License Pack</td> <td class="number unit_cost">$<span class="currency">???.??</span></td>   <td class="number discount">??%</td>         <td class="number user_cost">$<span class="currency">???.??</span></td> <td class="number quantity"><input name="quantity_10" value="0" class="quantity" type="text" maxlength="2" /></td> <td class="number total">$<span class="currency">???.??</span></td></tr>
+                </table>
+                <button type="submit" name="action" value="nextSupport" class="next">Next</button>
+              </div>
+            </div>
+            
+          </li>
+          
+          <li id="support_and_upgrades">
+          
+            <div class="expander_parent" id="expander_3">
+              <h2 class="profiler_section_heading expander">
+                <span class="aside indicatorContainer"></span>
+                3. Choose Product Bundle
+              </h2>
+            
+              <div class="body expandee">
+                <ul class="radio_list">
+                  <li>
+                    <div class="aside"><strong>Cost per user</strong></div>
+                    <input type="radio" checked="checked" value="0" name="support_upgrades" id="support_upgrades_0" />
+                    <label for="support_upgrades_0">No Support &amp; Upgrades</label>
+                  </li>
+                  <li>
+                    <div class="aside">$184</div>
+                    <input type="radio" name="support_upgrades" value="184" id="support_upgrades_1" />
+                    <label for="support_upgrades_1">1 Year Support &amp; Upgrades</label>
+                  </li>
+                  <li>
+                    <div class="aside">$368</div>
+                    <input type="radio" name="support_upgrades" value="368" id="support_upgrades_2" />
+                    <label for="support_upgrades_2">2 Years Support &amp; Upgrades</label>
+                  </li>
+                  <li>
+                    <div class="aside">$552</div>
+                    <input type="radio" name="support_upgrades" value="552" id="support_upgrades_3" />
+                    <label for="support_upgrades_3">3 Years Support &amp; Upgrades</label>
+                  </li>
+                </ul>
+                <noscript><div><button type="submit" name="action" value="updateBasket">Update Basket</button></div></noscript>
+                <button type="submit" name="action" value="checkout" class="checkout">Checkout Now</button>
+              </div>
+            </div>
+            
+          </li>
+          
+        </ol>
+      </form>
+      <!-- ASSESSMENT CONTENT END -->
+    </div>
+
+    <div id="footer"></div>
+
+  </body>
+</html>

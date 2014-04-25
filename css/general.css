@@ -1,0 +1,53 @@
+body {
+    padding: 0;
+    margin: 0;
+    font-size: 100%;
+    font: medium Verdana, Arial, Helvetica, sans-serif;
+}
+#header {
+    width:1000px;
+    height:172px;
+    background:url(../images/header.png) top left no-repeat;
+}
+#main {
+    width:930px;
+    padding:0 20px 0 50px;
+    min-height:200px;
+    background:url(../images/page.png) top left repeat-y;
+    font-size: 0.8em;
+}
+#footer {
+    width:1000px;
+    height:66px;
+    background:url(../images/footer.png) top left no-repeat;
+}
+
+strong {font-weight: bold;}
+h1, h2, h3 {margin: 0;}
+h1 {
+    font-size: 1.8em;
+    font-weight: normal;
+    margin-bottom: 10px;
+}
+h2 {
+    font-weight: bold;
+    margin: 5px 0;
+    font-size: 100%;
+}
+button {cursor: pointer;}
+button:hover {color: #555;}
+
+th {font-weight: bold;}
+tr {line-height: 2.5em;}
+table .text {text-align: left;}
+table .number {text-align: right;}
+
+ul.radio_list li {
+    line-height: 2.5em;
+    min-height: 2.5em;
+}
+.aside {
+    display: block;
+    float: right;
+} /* This could later be turned into an "aside" element, as per HTML5 draft */
+.accessibility, .hidden {display: none;}
